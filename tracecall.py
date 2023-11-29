@@ -534,29 +534,34 @@ def print_register_operands_of_instruction(instruction_address):
             logger.error("No instruction found at address: {0:#010x}".format(instruction_address))
             return
 
-        logger.info("Instruction at {0:#010x}: {1}".format(instruction_address, instruction))
+        print("Instruction at {0:#010x}: {1}".format(instruction_address, instruction))
+        print("here")
+        print("Instruction at {0:#010x}: {1}".format(instruction_address, instruction))
 
         for i in range(instruction.getNumOperands()):
+            print("here")
             operand = instruction.getOperandRef(i)
+            print("here")
+            print("{}".format(operand))
             if operand and operand.isRegister():
                 register = operand.getRegister()
                 logger.info("Operand {0} is a register: {1}".format(i, register))
 
     except Exception as e:
-        logger.error("Error processing instruction at {0:#010x}: {1}".format(instruction_address, str(e)))
+        logger.error("Error processing instruction at ")
 
 
 
 if __name__ == '__main__':
     search_functions = None
-    function_address = askLong("Input function address to trace", "Please input the function address")
-    target_function = getFunctionAt(toAddr(function_address))
+    # function_address = askLong("Input function address to trace", "Please input the function address")
+    # target_function = getFunctionAt(toAddr(function_address))
 
-    traceFunction(toAddr(function_address), 0)
+    # traceFunction(toAddr(function_address), 0)
 
     #instruction stuff
 
-    instruction_addr = toAddr(askLong("Input instruction address", "Please input the instruction address"))
+    instruction_addr = askLong("Input instruction address", "Please input the instruction address")
     print_register_operands_of_instruction(instruction_addr)
 
     # if target_function:
