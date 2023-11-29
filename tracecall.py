@@ -551,6 +551,8 @@ if __name__ == '__main__':
 
     traceFunction(toAddr(function_address), 0)
 
+    #instruction stuff
+
     instruction_addr = askAddress("Input instruction address", "Please input the instruction address")
     print_register_operands_of_instruction(instruction_addr)
 
