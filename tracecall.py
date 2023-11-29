@@ -1,9 +1,19 @@
+#TODO write a description for this script
+#@author 
+#@category _NEW_
+#@keybinding 
+#@menupath 
+#@toolbar 
+
+
+#TODO Add User Code Here
+
+
 from ghidra.app.decompiler import DecompInterface, DecompileOptions, DecompileResults
 from ghidra.program.model.pcode import HighParam, PcodeOp, PcodeOpAST
 from ghidra.program.model.address import GenericAddress
 import logging
 import struct
-
 
 # debug = True
 debug = False
@@ -418,30 +428,153 @@ def dump_call_parm_value(call_address, search_functions=None):
 
         return parms_data
 
+def traceVariable(call_address, register, search_functions=None):
+    """
+
+    :param call_address:
+    :param search_functions: function name list to search
+    :return:
+
+    This function takes in the address and register of the variable of interest.
+    This function prints out the value of the register
+    """
+    return
+
+
+
+# def dynamic_analyses(call_address, search_functions=None):
+#     """
+#     Perform dynamic analysis on a specific function call using angr.
+#     This function will set a breakpoint at the given call address, run the program,
+#     and then capture the state of the program at the breakpoint to analyze the parameters.
+
+#     :param call_address: The address of the function call to analyze.
+#     :param search_functions: Optional, list of specific functions to analyze.
+#     :return: None
+#     """
+
+#     # Load the binary
+#     project = angr.Project('path_to_binary', load_options={"auto_load_libs": False})
+
+#     # Create a state at the entry point of the binary
+#     entry_state = project.factory.entry_state()
+
+#     # Set up a simulation manager
+#     simgr = project.factory.simgr(entry_state)
+
+#     # Define a breakpoint condition
+#     def breakpoint(state):
+#         return state.addr == call_address
+
+#     # Explore the binary to the call address
+#     simgr.explore(find=breakpoint)
+
+#     # Check if we have reached the desired state
+#     if simgr.found:
+#         found_state = simgr.found[0]
+
+#         # Analyze the parameters at the call address
+#         # This depends on the calling convention and the binary itself
+#         # For example, in x86, parameters might be on the stack or in registers
+#         parameters = []  # This should be filled with actual parameter extraction logic
+
+#         # Print or process the parameters
+#         print(f"Parameters at address {hex(call_address)}: {parameters}")
+#     else:
+#         print(f"Unable to find the state at address {hex(call_address)}")
+
+def traceFunction(call_address, trace, search_functions=None):
+    target_function = getFunctionAt(call_address)
+
+    parms_data = dump_call_parm_value(call_address)
+    for call_addr in parms_data:
+        call_parms = parms_data[call_addr]
+        parm_data_string = ""
+        for parm in sorted(call_parms['parms'].keys()):
+            parm_value = call_parms['parms'][parm]['parm_value']
+            parm_data = call_parms['parms'][parm]['parm_data']
+            if parm_value:
+                parm_data_string += "{}({:#010x}), ".format(parm_data, parm_value)
+            else:
+                parm_data_string += "{}({}), ".format(parm_data, parm_value)
+        parm_data_string = parm_data_string.strip(', ')
+        print("{}".format(trace))
+        print("{}({}) at {:#010x} in {}({:#010x})".format(target_function.name, parm_data_string,
+                                                            call_parms['call_addr'].offset,
+                                                            call_parms['refrence_function_name'],
+                                                            call_parms['refrence_function_addr'].offset
+                                                            ))
+        print("\n")
+        if not 'call_parms' in locals():
+            print("Finished recursion")
+            return
+
+        traceFunction(call_parms['refrence_function_addr'], trace+1)
+
+    print("\n")
+
+    if not 'call_parms' in locals():
+        print("Finished recursion")
+        return
+            
+
+def print_register_operands_of_instruction(instruction_address):
+    """
+    Given an instruction address, find the addresses of the operands of that instruction
+    that are registers and print them out.
+
+    :param instruction_address: The address of the instruction to analyze.
+    """
+    try:
+        instruction = getInstructionAt(toAddr(instruction_address))
+        if not instruction:
+            logger.error("No instruction found at address: {0:#010x}".format(instruction_address))
+            return
+
+        logger.info("Instruction at {0:#010x}: {1}".format(instruction_address, instruction))
+
+        for i in range(instruction.getNumOperands()):
+            operand = instruction.getOperandRef(i)
+            if operand and operand.isRegister():
+                register = operand.getRegister()
+                logger.info("Operand {0} is a register: {1}".format(i, register))
+
+    except Exception as e:
+        logger.error("Error processing instruction at {0:#010x}: {1}".format(instruction_address, str(e)))
+
+
 
 if __name__ == '__main__':
     search_functions = None
     function_address = askLong("Input function address to trace", "Please input the function address")
     target_function = getFunctionAt(toAddr(function_address))
-    if target_function:
-        print("target_function: {}".format(target_function))
-        parms_data = dump_call_parm_value(toAddr(function_address))
-        for call_addr in parms_data:
-            call_parms = parms_data[call_addr]
-            parm_data_string = ""
-            for parm in sorted(call_parms['parms'].keys()):
-                parm_value = call_parms['parms'][parm]['parm_value']
-                parm_data = call_parms['parms'][parm]['parm_data']
-                if parm_value:
-                    parm_data_string += "{}({:#010x}), ".format(parm_data, parm_value)
-                else:
-                    parm_data_string += "{}({}), ".format(parm_data, parm_value)
-            parm_data_string = parm_data_string.strip(', ')
-            print("{}({}) at {:#010x} in {}({:#010x})".format(target_function.name, parm_data_string,
-                                                              call_parms['call_addr'].offset,
-                                                              call_parms['refrence_function_name'],
-                                                              call_parms['refrence_function_addr'].offset
-                                                              ))
+
+    traceFunction(toAddr(function_address), 0)
+
+    # Example usage
+
+    # instruction_addr = askAddress("Input instruction address", "Please input the instruction address")
+    # print_register_operands_of_instruction(instruction_addr)
+
+    # if target_function:
+    #     print("target_function: {}".format(target_function))
+    #     parms_data = dump_call_parm_value(toAddr(function_address))
+    #     for call_addr in parms_data:
+    #         call_parms = parms_data[call_addr]
+    #         parm_data_string = ""
+    #         for parm in sorted(call_parms['parms'].keys()):
+    #             parm_value = call_parms['parms'][parm]['parm_value']
+    #             parm_data = call_parms['parms'][parm]['parm_data']
+    #             if parm_value:
+    #                 parm_data_string += "{}({:#010x}), ".format(parm_data, parm_value)
+    #             else:
+    #                 parm_data_string += "{}({}), ".format(parm_data, parm_value)
+    #         parm_data_string = parm_data_string.strip(', ')
+    #         print("{}({}) at {:#010x} in {}({:#010x})".format(target_function.name, parm_data_string,
+    #                                                           call_parms['call_addr'].offset,
+    #                                                           call_parms['refrence_function_name'],
+    #                                                           call_parms['refrence_function_addr'].offset
+    #                                                           ))
             
-    else:
-        print("Can't find function at address: {:#010x}".format(function_address))
+    # else:
+    #     print("Can't find function at address: {:#010x}".format(function_address))
