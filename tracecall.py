@@ -535,8 +535,6 @@ def print_register_operands_of_instruction(instruction_address):
             return
 
         print("Instruction at {0:#010x}: {1}".format(instruction_address, instruction))
-        print("here")
-        print("Instruction at {0:#010x}: {1}".format(instruction_address, instruction))
 
         for i in range(instruction.getNumOperands()):
             print("here")
