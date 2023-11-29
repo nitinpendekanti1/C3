@@ -486,6 +486,9 @@ def traceVariable(call_address, register, search_functions=None):
 def traceFunction(call_address, trace, search_functions=None):
     target_function = getFunctionAt(call_address)
 
+    if not target_function:
+        return
+
     parms_data = dump_call_parm_value(call_address)
     for call_addr in parms_data:
         call_parms = parms_data[call_addr]
