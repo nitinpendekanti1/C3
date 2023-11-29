@@ -553,7 +553,7 @@ if __name__ == '__main__':
 
     #instruction stuff
 
-    instruction_addr = askAddress("Input instruction address", "Please input the instruction address")
+    instruction_addr = toAddr(askLong("Input instruction address", "Please input the instruction address"))
     print_register_operands_of_instruction(instruction_addr)
 
     # if target_function:
