@@ -99,10 +99,10 @@ def calc_pcode_op(pcode):
     if isinstance(pcode, PcodeOpAST):
         opcode = pcode.getOpcode()
         if opcode == PcodeOp.PTRSUB:
-            var_node_1 = FunctionMetadata(pcode.getInput(0))
-            var_node_2 = FunctionMetadata(pcode.getInput(1))
-            value_1 = var_node_1.get_info_type()
-            value_2 = var_node_2.get_info_type()
+            opcode_1 = FunctionMetadata(pcode.getInput(0))
+            opcode_2 = FunctionMetadata(pcode.getInput(1))
+            value_1 = opcode_1.get_info_type()
+            value_2 = opcode_2.get_info_type()
             if isinstance(value_1, GenericAddress) and isinstance(value_2, GenericAddress):
                 return value_1.offset + value_2.offset
 
@@ -113,8 +113,8 @@ def calc_pcode_op(pcode):
 
         elif opcode == PcodeOp.CAST:
             logger.debug("CAST")
-            var_node_1 = FunctionMetadata(pcode.getInput(0))
-            value_1 = var_node_1.get_info_type()
+            opcode_1 = FunctionMetadata(pcode.getInput(0))
+            value_1 = opcode_1.get_info_type()
             if isinstance(value_1, GenericAddress):
                 return value_1.offset
 
@@ -124,8 +124,8 @@ def calc_pcode_op(pcode):
         elif opcode == PcodeOp.PTRADD:
             logger.debug("PTRADD")
             var_node_0 = FunctionMetadata(pcode.getInput(0))
-            var_node_1 = FunctionMetadata(pcode.getInput(1))
-            var_node_2 = FunctionMetadata(pcode.getInput(2))
+            opcode_1 = FunctionMetadata(pcode.getInput(1))
+            opcode_2 = FunctionMetadata(pcode.getInput(2))
             try:
                 value_0_point = var_node_0.get_info_type()
                 logger.debug("value_0_point: {}".format(value_0_point))
@@ -134,7 +134,7 @@ def calc_pcode_op(pcode):
                 value_0 = toAddr(getInt(value_0_point))
                 logger.debug("value_0: {}".format(value_0))
                 logger.debug("type(value_0): {}".format(type(value_0)))
-                value_1 = var_node_1.get_info_type()
+                value_1 = opcode_1.get_info_type()
                 logger.debug("value_1: {}".format(value_1))
                 logger.debug("type(value_1): {}".format(type(value_1)))
                 if not isinstance(value_1, GenericAddress):
@@ -142,7 +142,7 @@ def calc_pcode_op(pcode):
                     return
                 value_1 = get_signed_value(value_1.offset)
                 # TODO: Handle input2 later
-                value_2 = var_node_2.get_info_type()
+                value_2 = opcode_2.get_info_type()
                 logger.debug("value_2: {}".format(value_2))
                 logger.debug("type(value_2): {}".format(type(value_2)))
                 if not isinstance(value_2, GenericAddress):
