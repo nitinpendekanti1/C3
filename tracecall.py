@@ -141,7 +141,6 @@ def calc_pcode_op(pcode):
                     logger.debug("value_1 is not GenericAddress!")
                     return
                 value_1 = get_signed_value(value_1.offset)
-                # TODO: Handle input2 later
                 value_2 = opcode_2.get_info_type()
                 logger.debug("value_2: {}".format(value_2))
                 logger.debug("type(value_2): {}".format(type(value_2)))
@@ -161,12 +160,10 @@ def calc_pcode_op(pcode):
 
         elif opcode == PcodeOp.INDIRECT:
             logger.debug("INDIRECT")
-            # TODO: Need find a way to handle INDIRECT operator.
             return None
 
         elif opcode == PcodeOp.MULTIEQUAL:
             logger.debug("MULTIEQUAL")
-            # TODO: Add later
             return None
 
         elif opcode == PcodeOp.COPY:
@@ -185,12 +182,6 @@ def calc_pcode_op(pcode):
 class FunctionAnalyzer(object):
 
     def __init__(self, function, timeout=30, logger=logger):
-        """
-
-        :param function: Ghidra function object.
-        :param timeout: timeout for decompile.
-        :param logger: logger.
-        """
         self.function = function
         self.timeout = timeout
         if logger is None:
@@ -308,12 +299,7 @@ class FunctionAnalyzer(object):
 
 
 def dump_call_parm_value(call_address, search_functions=None):
-    """
 
-    :param call_address:
-    :param search_functions: function name list to search
-    :return:
-    """
     target_function = getFunctionAt(call_address)
     parms_data = {}
     if target_function:
