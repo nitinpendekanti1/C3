@@ -1,13 +1,3 @@
-#TODO write a description for this script
-#@author 
-#@category _NEW_
-#@keybinding 
-#@menupath 
-#@toolbar 
-
-
-#TODO Add User Code Here
-
 from ghidra.app.decompiler import DecompInterface, DecompileOptions, DecompileResults
 from ghidra.program.model.pcode import HighParam, PcodeOp, PcodeOpAST
 from ghidra.program.model.address import GenericAddress
@@ -23,24 +13,21 @@ console_format = logging.Formatter('[%(levelname)-8s][%(module)s.%(funcName)s] %
 consolehandler.setFormatter(console_format)
 logger.addHandler(consolehandler)
 
-endian = currentProgram.domainFile.getMetadata()[u'Endian']
+endian = currentProgram.domainFile.getMetadata()[u'Endian'] #get endian information from Ghidra
 if endian == u'Big':
     is_big_endian = True
 else:
     is_big_endian = False
 
-process_type = currentProgram.domainFile.getMetadata()[u'Processor']
+process_type = currentProgram.domainFile.getMetadata()[u'Processor'] #get 32 or 64 bit
 if process_type.endswith(u'64'):
     process_is_64bit = True
 
 decompile_function_cache = {}
 
-
-def is_address_in_current_program(address):
+def is_address_in_program(address):
     for block in currentProgram.memory.blocks:
-        if address.offset in range(block.getStart().offset,block.getEnd().offset):
-            return True
-    return False
+        return address.offset in range(block.getStart().offset,block.getEnd().offset):
 
 
 def get_signed_value(input_data):
@@ -101,14 +88,12 @@ class FunctionMetadata(object):
         # https://github.com/NationalSecurityAgency/ghidra/issues/2283
         elif self.var_node.isPersistent():
             self.logger.debug("Var_node isPersistent")
-            # TODO: Handler this later
             return
         elif self.var_node.isAddrTied():
             self.logger.debug("Var_node isAddrTied")
             return calc_pcode_op(self.var_node.getDef())
         elif self.var_node.isUnaffected():
             self.logger.debug("Var_node isUnaffected")
-            # TODO: Handler this later
             return
         else:
             self.logger.debug("self.var_node: {}".format(self.var_node))
@@ -315,7 +300,7 @@ class FunctionAnalyzer(object):
             self.logger.debug("parm_value: {}".format(parm_value))
             parm_data = None
             if parm_value:
-                if is_address_in_current_program(toAddr(parm_value)):
+                if is_address_in_program(toAddr(parm_value)):
                     if getDataAt(toAddr(parm_value)):
                         parm_data = getDataAt(toAddr(parm_value))
                     elif getInstructionAt(toAddr(parm_value)):
