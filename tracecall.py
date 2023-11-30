@@ -27,34 +27,33 @@ decompile_function_cache = {}
 
 def is_address_in_program(address):
     for block in currentProgram.memory.blocks:
-        return address.offset in range(block.getStart().offset,block.getEnd().offset):
+        if address.offset in range(block.getStart().offset,block.getEnd().offset):
+            return True
+    return False
 
 
 def get_signed_value(input_data):
-    pack_format = ""
+    data_packing_formatting = ""
     if is_big_endian:
-        pack_format += ">"
+        data_packing_formatting += ">"
     else:
-        pack_format += "<"
+        data_packing_formatting += "<"
 
     if process_is_64bit:
-        pack_format += "L"
+        data_packing_formatting += "L"
     else:
-        pack_format += "I"
+        data_packing_formatting += "I"
 
     logger.debug("type(input_data): {}".format(type(input_data)))
-    data = struct.pack(pack_format.upper(), input_data.offset)
-    signed_data = struct.unpack(pack_format.lower(), data)[0]
+    data = struct.pack(data_packing_formatting.upper(), input_data.offset)
+    data_signed = struct.unpack(data_packing_formatting.lower(), data)[0]
 
-    return signed_data
+    return data_signed
 
 
 class FunctionMetadata(object):
     def __init__(self, var_node, logger=logger):
-        """ Used to get VarNode value
 
-        :param var_node:
-        """
         self.var_node = var_node
         if logger is None:
             self.logger = logging.getLogger('FunctionMetadata_logger')
@@ -66,11 +65,8 @@ class FunctionMetadata(object):
         else:
             self.logger = logger
 
-    def get_value(self):
-        """ Get VarNode value depend on it's type.
+    def get_info_type(self):
 
-        :return:
-        """
         if self.var_node.isAddress():
             self.logger.debug("Var_node isAddress")
             return self.var_node.getAddress()
@@ -85,7 +81,6 @@ class FunctionMetadata(object):
             self.logger.debug(self.var_node.getDef())
             return calc_pcode_op(self.var_node.getDef())
 
-        # https://github.com/NationalSecurityAgency/ghidra/issues/2283
         elif self.var_node.isPersistent():
             self.logger.debug("Var_node isPersistent")
             return
@@ -104,11 +99,10 @@ def calc_pcode_op(pcode):
     if isinstance(pcode, PcodeOpAST):
         opcode = pcode.getOpcode()
         if opcode == PcodeOp.PTRSUB:
-            logger.debug("PTRSUB")
             var_node_1 = FunctionMetadata(pcode.getInput(0))
             var_node_2 = FunctionMetadata(pcode.getInput(1))
-            value_1 = var_node_1.get_value()
-            value_2 = var_node_2.get_value()
+            value_1 = var_node_1.get_info_type()
+            value_2 = var_node_2.get_info_type()
             if isinstance(value_1, GenericAddress) and isinstance(value_2, GenericAddress):
                 return value_1.offset + value_2.offset
 
@@ -120,7 +114,7 @@ def calc_pcode_op(pcode):
         elif opcode == PcodeOp.CAST:
             logger.debug("CAST")
             var_node_1 = FunctionMetadata(pcode.getInput(0))
-            value_1 = var_node_1.get_value()
+            value_1 = var_node_1.get_info_type()
             if isinstance(value_1, GenericAddress):
                 return value_1.offset
 
@@ -133,14 +127,14 @@ def calc_pcode_op(pcode):
             var_node_1 = FunctionMetadata(pcode.getInput(1))
             var_node_2 = FunctionMetadata(pcode.getInput(2))
             try:
-                value_0_point = var_node_0.get_value()
+                value_0_point = var_node_0.get_info_type()
                 logger.debug("value_0_point: {}".format(value_0_point))
                 if not isinstance(value_0_point, GenericAddress):
                     return
                 value_0 = toAddr(getInt(value_0_point))
                 logger.debug("value_0: {}".format(value_0))
                 logger.debug("type(value_0): {}".format(type(value_0)))
-                value_1 = var_node_1.get_value()
+                value_1 = var_node_1.get_info_type()
                 logger.debug("value_1: {}".format(value_1))
                 logger.debug("type(value_1): {}".format(type(value_1)))
                 if not isinstance(value_1, GenericAddress):
@@ -148,7 +142,7 @@ def calc_pcode_op(pcode):
                     return
                 value_1 = get_signed_value(value_1.offset)
                 # TODO: Handle input2 later
-                value_2 = var_node_2.get_value()
+                value_2 = var_node_2.get_info_type()
                 logger.debug("value_2: {}".format(value_2))
                 logger.debug("type(value_2): {}".format(type(value_2)))
                 if not isinstance(value_2, GenericAddress):
@@ -180,7 +174,7 @@ def calc_pcode_op(pcode):
             logger.debug("input_0: {}".format(pcode.getInput(0)))
             logger.debug("Output: {}".format(pcode.getOutput()))
             var_node_0 = FunctionMetadata(pcode.getInput(0))
-            value_0 = var_node_0.get_value()
+            value_0 = var_node_0.get_info_type()
             return value_0
 
     else:
@@ -266,7 +260,7 @@ class FunctionAnalyzer(object):
                 self.logger.debug("target_call_addr: {}".format(target_call_addr))
 
             elif opcode == PcodeOp.CALLIND:
-                target_call_addr = FunctionMetadata(pcodeOpAST.getInput(0)).get_value()
+                target_call_addr = FunctionMetadata(pcodeOpAST.getInput(0)).get_info_type()
                 self.logger.debug("target_call_addr: {}".format(target_call_addr))
 
             inputs = pcodeOpAST.getInputs()
@@ -275,7 +269,7 @@ class FunctionAnalyzer(object):
                 self.logger.debug("parm{}: {}".format(i, parm))
                 parm_node = FunctionMetadata(parm)
                 self.logger.debug("parm_node: {}".format(parm_node))
-                parm_value = parm_node.get_value()
+                parm_value = parm_node.get_info_type()
                 self.logger.debug("parm_value: {}".format(parm_value))
                 if isinstance(parm_value, GenericAddress):
                     parm_value = parm_value.offset
