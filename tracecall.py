@@ -8,27 +8,20 @@
 
 #TODO Add User Code Here
 
-
 from ghidra.app.decompiler import DecompInterface, DecompileOptions, DecompileResults
 from ghidra.program.model.pcode import HighParam, PcodeOp, PcodeOpAST
 from ghidra.program.model.address import GenericAddress
 import logging
 import struct
 
-# debug = True
-debug = False
 process_is_64bit = False
 
-# Init Default Logger
 logger = logging.getLogger('Default_logger')
 logger.setLevel(logging.INFO)
 consolehandler = logging.StreamHandler()
 console_format = logging.Formatter('[%(levelname)-8s][%(module)s.%(funcName)s] %(message)s')
 consolehandler.setFormatter(console_format)
 logger.addHandler(consolehandler)
-
-if debug:
-    logger.setLevel(logging.DEBUG)
 
 endian = currentProgram.domainFile.getMetadata()[u'Endian']
 if endian == u'Big':
@@ -69,7 +62,7 @@ def get_signed_value(input_data):
     return signed_data
 
 
-class FlowNode(object):
+class FunctionMetadata(object):
     def __init__(self, var_node, logger=logger):
         """ Used to get VarNode value
 
@@ -77,7 +70,7 @@ class FlowNode(object):
         """
         self.var_node = var_node
         if logger is None:
-            self.logger = logging.getLogger('FlowNode_logger')
+            self.logger = logging.getLogger('FunctionMetadata_logger')
             self.logger.setLevel(logging.INFO)
             consolehandler = logging.StreamHandler()
             console_format = logging.Formatter('[%(levelname)-8s][%(module)s.%(funcName)s] %(message)s')
@@ -127,8 +120,8 @@ def calc_pcode_op(pcode):
         opcode = pcode.getOpcode()
         if opcode == PcodeOp.PTRSUB:
             logger.debug("PTRSUB")
-            var_node_1 = FlowNode(pcode.getInput(0))
-            var_node_2 = FlowNode(pcode.getInput(1))
+            var_node_1 = FunctionMetadata(pcode.getInput(0))
+            var_node_2 = FunctionMetadata(pcode.getInput(1))
             value_1 = var_node_1.get_value()
             value_2 = var_node_2.get_value()
             if isinstance(value_1, GenericAddress) and isinstance(value_2, GenericAddress):
@@ -141,7 +134,7 @@ def calc_pcode_op(pcode):
 
         elif opcode == PcodeOp.CAST:
             logger.debug("CAST")
-            var_node_1 = FlowNode(pcode.getInput(0))
+            var_node_1 = FunctionMetadata(pcode.getInput(0))
             value_1 = var_node_1.get_value()
             if isinstance(value_1, GenericAddress):
                 return value_1.offset
@@ -151,9 +144,9 @@ def calc_pcode_op(pcode):
 
         elif opcode == PcodeOp.PTRADD:
             logger.debug("PTRADD")
-            var_node_0 = FlowNode(pcode.getInput(0))
-            var_node_1 = FlowNode(pcode.getInput(1))
-            var_node_2 = FlowNode(pcode.getInput(2))
+            var_node_0 = FunctionMetadata(pcode.getInput(0))
+            var_node_1 = FunctionMetadata(pcode.getInput(1))
+            var_node_2 = FunctionMetadata(pcode.getInput(2))
             try:
                 value_0_point = var_node_0.get_value()
                 logger.debug("value_0_point: {}".format(value_0_point))
@@ -201,7 +194,7 @@ def calc_pcode_op(pcode):
             logger.debug("COPY")
             logger.debug("input_0: {}".format(pcode.getInput(0)))
             logger.debug("Output: {}".format(pcode.getOutput()))
-            var_node_0 = FlowNode(pcode.getInput(0))
+            var_node_0 = FunctionMetadata(pcode.getInput(0))
             value_0 = var_node_0.get_value()
             return value_0
 
@@ -256,44 +249,6 @@ class FunctionAnalyzer(object):
 
             return ops
 
-    def print_pcodes(self):
-        ops = self.get_function_pcode()
-        while ops.hasNext():
-            pcodeOpAST = ops.next()
-            print(pcodeOpAST)
-            opcode = pcodeOpAST.getOpcode()
-            print("Opcode: {}".format(opcode))
-            if opcode == PcodeOp.CALL:
-                print("We found Call at 0x{}".format(pcodeOpAST.getInput(0).PCAddress))
-                call_addr = pcodeOpAST.getInput(0).getAddress()
-                print("Calling {}(0x{}) ".format(getFunctionAt(call_addr), call_addr))
-                inputs = pcodeOpAST.getInputs()
-                for i in range(len(inputs)):
-                    parm = inputs[i]
-                    print("parm{}: {}".format(i, parm))
-
-    def find_perv_call_address(self, address):
-        try:
-            address_index = sorted(self.call_pcodes.keys()).index(address)
-
-        except Exception as err:
-            return
-
-        if address_index > 0:
-            perv_address = sorted(self.call_pcodes.keys())[address_index - 1]
-            return self.call_pcodes[perv_address]
-
-    def find_next_call_address(self, address):
-        try:
-            address_index = sorted(self.call_pcodes.keys()).index(address)
-
-        except Exception as err:
-            return
-
-        if address_index < len(self.call_pcodes) - 1:
-            next_address = sorted(self.call_pcodes.keys())[address_index + 1]
-            return self.call_pcodes[next_address]
-
     def get_all_call_pcode(self):
         ops = self.get_function_pcode()
         if not ops:
@@ -326,14 +281,14 @@ class FunctionAnalyzer(object):
                 self.logger.debug("target_call_addr: {}".format(target_call_addr))
 
             elif opcode == PcodeOp.CALLIND:
-                target_call_addr = FlowNode(pcodeOpAST.getInput(0)).get_value()
+                target_call_addr = FunctionMetadata(pcodeOpAST.getInput(0)).get_value()
                 self.logger.debug("target_call_addr: {}".format(target_call_addr))
 
             inputs = pcodeOpAST.getInputs()
             for i in range(len(inputs))[1:]:
                 parm = inputs[i]
                 self.logger.debug("parm{}: {}".format(i, parm))
-                parm_node = FlowNode(parm)
+                parm_node = FunctionMetadata(parm)
                 self.logger.debug("parm_node: {}".format(parm_node))
                 parm_value = parm_node.get_value()
                 self.logger.debug("parm_value: {}".format(parm_value))
@@ -385,7 +340,6 @@ def dump_call_parm_value(call_address, search_functions=None):
     if target_function:
         target_references = getReferencesTo(target_function.getEntryPoint())
         for target_reference in target_references:
-            # Filter reference type
             reference_type = target_reference.getReferenceType()
             logger.debug("reference_type: {}".format(reference_type))
             logger.debug("isJump: {}".format(reference_type.isJump()))
@@ -428,61 +382,6 @@ def dump_call_parm_value(call_address, search_functions=None):
 
         return parms_data
 
-def traceVariable(call_address, register, search_functions=None):
-    """
-
-    :param call_address:
-    :param search_functions: function name list to search
-    :return:
-
-    This function takes in the address and register of the variable of interest.
-    This function prints out the value of the register
-    """
-    return
-
-
-
-# def dynamic_analyses(call_address, search_functions=None):
-#     """
-#     Perform dynamic analysis on a specific function call using angr.
-#     This function will set a breakpoint at the given call address, run the program,
-#     and then capture the state of the program at the breakpoint to analyze the parameters.
-
-#     :param call_address: The address of the function call to analyze.
-#     :param search_functions: Optional, list of specific functions to analyze.
-#     :return: None
-#     """
-
-#     # Load the binary
-#     project = angr.Project('path_to_binary', load_options={"auto_load_libs": False})
-
-#     # Create a state at the entry point of the binary
-#     entry_state = project.factory.entry_state()
-
-#     # Set up a simulation manager
-#     simgr = project.factory.simgr(entry_state)
-
-#     # Define a breakpoint condition
-#     def breakpoint(state):
-#         return state.addr == call_address
-
-#     # Explore the binary to the call address
-#     simgr.explore(find=breakpoint)
-
-#     # Check if we have reached the desired state
-#     if simgr.found:
-#         found_state = simgr.found[0]
-
-#         # Analyze the parameters at the call address
-#         # This depends on the calling convention and the binary itself
-#         # For example, in x86, parameters might be on the stack or in registers
-#         parameters = []  # This should be filled with actual parameter extraction logic
-
-#         # Print or process the parameters
-#         print(f"Parameters at address {hex(call_address)}: {parameters}")
-#     else:
-#         print(f"Unable to find the state at address {hex(call_address)}")
-
 def traceFunction(call_address, trace, search_functions=None):
     target_function = getFunctionAt(call_address)
 
@@ -501,7 +400,7 @@ def traceFunction(call_address, trace, search_functions=None):
             else:
                 parm_data_string += "{}({}), ".format(parm_data, parm_value)
         parm_data_string = parm_data_string.strip(', ')
-        print("{}".format(trace))
+        print("Function depth: {}".format(trace))
         print("{}({}) at {:#010x} in {}({:#010x})".format(target_function.name, parm_data_string,
                                                             call_parms['call_addr'].offset,
                                                             call_parms['refrence_function_name'],
@@ -509,7 +408,7 @@ def traceFunction(call_address, trace, search_functions=None):
                                                             ))
         print("\n")
         if not 'call_parms' in locals():
-            print("Finished recursion")
+            print("Finished recursion\n")
             return
 
         traceFunction(call_parms['refrence_function_addr'], trace+1)
@@ -517,70 +416,12 @@ def traceFunction(call_address, trace, search_functions=None):
     print("\n")
 
     if not 'call_parms' in locals():
-        print("Finished recursion")
+        print("Finished recursion\n")
         return
-            
-
-def print_register_operands_of_instruction(instruction_address):
-    """
-    Given an instruction address, find the addresses of the operands of that instruction
-    that are registers and print them out.
-
-    :param instruction_address: The address of the instruction to analyze.
-    """
-    try:
-        instruction = getInstructionAt(toAddr(instruction_address))
-        if not instruction:
-            logger.error("No instruction found at address: {0:#010x}".format(instruction_address))
-            return
-
-        print("Instruction at {0:#010x}: {1}".format(instruction_address, instruction))
-
-        for i in range(instruction.getNumOperands()):
-            print("here")
-            operand = instruction.getOperandRef(i)
-            print("here")
-            print("{}".format(operand))
-            if operand and operand.isRegister():
-                register = operand.getRegister()
-                logger.info("Operand {0} is a register: {1}".format(i, register))
-
-    except Exception as e:
-        logger.error("Error processing instruction at ")
-
-
 
 if __name__ == '__main__':
     search_functions = None
-    # function_address = askLong("Input function address to trace", "Please input the function address")
-    # target_function = getFunctionAt(toAddr(function_address))
+    function_address = askLong("Input function address to trace", "Please input the function address")
+    target_function = getFunctionAt(toAddr(function_address))
 
-    # traceFunction(toAddr(function_address), 0)
-
-    #instruction stuff
-
-    instruction_addr = askLong("Input instruction address", "Please input the instruction address")
-    print_register_operands_of_instruction(instruction_addr)
-
-    # if target_function:
-    #     print("target_function: {}".format(target_function))
-    #     parms_data = dump_call_parm_value(toAddr(function_address))
-    #     for call_addr in parms_data:
-    #         call_parms = parms_data[call_addr]
-    #         parm_data_string = ""
-    #         for parm in sorted(call_parms['parms'].keys()):
-    #             parm_value = call_parms['parms'][parm]['parm_value']
-    #             parm_data = call_parms['parms'][parm]['parm_data']
-    #             if parm_value:
-    #                 parm_data_string += "{}({:#010x}), ".format(parm_data, parm_value)
-    #             else:
-    #                 parm_data_string += "{}({}), ".format(parm_data, parm_value)
-    #         parm_data_string = parm_data_string.strip(', ')
-    #         print("{}({}) at {:#010x} in {}({:#010x})".format(target_function.name, parm_data_string,
-    #                                                           call_parms['call_addr'].offset,
-    #                                                           call_parms['refrence_function_name'],
-    #                                                           call_parms['refrence_function_addr'].offset
-    #                                                           ))
-            
-    # else:
-    #     print("Can't find function at address: {:#010x}".format(function_address))
+    traceFunction(toAddr(function_address), 0)
